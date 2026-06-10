@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-secondary text-light stat-card blue">
+            <div class="card-body">
+                <div class="text-muted small">Total DNS Packets</div>
+                <h2 class="mb-0">{{ total_packets }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-light stat-card red">
+            <div class="card-body">
+                <div class="text-muted small">Spoof Alerts</div>
+                <h2 class="mb-0 {% if spoof_alert_count > 0 %}text-danger{% endif %}">{{ spoof_alert_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-light stat-card yellow">
+            <div class="card-body">
+                <div class="text-muted small">Config Alerts</div>
+                <h2 class="mb-0 {% if config_alert_count > 0 %}text-warning{% endif %}">{{ config_alert_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-light stat-card green">
+            <div class="card-body">
+                <div class="text-muted small">Suspicious (last 60m)</div>
+                <h2 class="mb-0">{{ stats.suspicious_count }} <small class="fs-6 text-muted">({{ stats.suspicious_pct }}%)</small></h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DNS Resolver + Top Domains -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">⚙ Active Nameservers</div>
+            <div class="card-body">
+                {% if nameservers %}
+                    {% for ns in nameservers %}
+                    <span class="badge bg-info text-dark me-1">{{ ns }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">No nameservers found</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">🔝 Top Queried Domains</div>
+            <div class="card-body p-0">
+                <table class="table table-dark table-sm mb-0">
+                    <thead><tr><th>Domain</th><th>Count</th></tr></thead>
+                    <tbody>
+                    {% for domain, count in top_domains %}
+                    <tr><td class="text-truncate" style="max-width:350px">{{ domain }}</td><td>{{ count }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-muted">No data yet</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent DNS Logs -->
+<div class="card bg-black text-light">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📋 Recent DNS Activity</h5>
+        <span class="badge bg-secondary">Auto-refresh 5s</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-dark table-striped table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Timestamp</th><th>Source IP</th>
+                    <th>Destination</th><th>Domain</th><th>Type</th>
+                    <th>Suspicious</th><th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+            <tr {% if log.suspicious %}class="table-danger"{% endif %}>
+                <td>{{ log.id }}</td>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.source_ip }}</td>
+                <td>{{ log.destination_ip }}</td>
+                <td class="text-truncate" style="max-width:200px" title="{{ log.domain }}">{{ log.domain }}</td>
+                <td><span class="badge bg-primary">{{ log.query_type }}</span></td>
+                <td>
+                    {% if log.suspicious %}
+                        <span class="badge bg-danger">YES</span>
+                    {% else %}
+                        <span class="badge bg-success">NO</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.threat_score >= 70 %}
+                        <span class="text-danger fw-bold">{{ log.threat_score }}</span>
+                    {% elif log.threat_score >= 40 %}
+                        <span class="text-warning">{{ log.threat_score }}</span>
+                    {% else %}
+                        {{ log.threat_score }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted">No DNS packets captured yet. Run with root/sudo to start sniffing.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<script>setTimeout(() => location.reload(), 5000);</script>
+{% endblock %}

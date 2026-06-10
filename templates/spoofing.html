@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>⚠ DNS Spoofing Detection</h4>
+    <span class="badge bg-danger fs-6">{{ total }} Total Alerts</span>
+</div>
+
+<div class="card bg-secondary text-light mb-4">
+    <div class="card-body">
+        <strong>How it works:</strong> Detects when a domain suddenly resolves to a new/different IP (possible cache poisoning),
+        responses with suspicious TTL values, and DNS answers from untrusted resolvers.
+        Alerts are logged to the database for investigation.
+    </div>
+</div>
+
+<div class="card bg-black text-light">
+    <div class="card-header">Recent Spoofing Alerts</div>
+    <div class="card-body p-0">
+        <table class="table table-dark table-striped table-sm mb-0">
+            <thead>
+                <tr><th>ID</th><th>Timestamp</th><th>Domain</th><th>Alert Type</th><th>Details</th><th>Severity</th></tr>
+            </thead>
+            <tbody>
+            {% for a in alerts %}
+            <tr>
+                <td>{{ a.id }}</td>
+                <td>{{ a.timestamp }}</td>
+                <td class="text-truncate" style="max-width:150px">{{ a.domain }}</td>
+                <td><span class="badge bg-warning text-dark">{{ a.alert_type }}</span></td>
+                <td>{{ a.details }}</td>
+                <td>
+                    {% if a.severity == 'HIGH' or a.severity == 'CRITICAL' %}
+                        <span class="badge bg-danger">{{ a.severity }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">{{ a.severity }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-3">
+                No spoofing alerts detected yet.<br>
+                <small>Alerts trigger when a domain resolves to a new IP, has unusual TTL, or uses an untrusted resolver.</small>
+            </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

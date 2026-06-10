@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>🌐 Network Tools & Status</h4>
+    <small class="text-muted">Updated: {{ snapshot.timestamp }}</small>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- DNS Server Status -->
+    <div class="col-md-6">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">📡 DNS Server Status</div>
+            <div class="card-body p-0">
+                <table class="table table-dark table-sm mb-0">
+                    <thead><tr><th>Server</th><th>IP</th><th>Status</th><th>RTT</th></tr></thead>
+                    <tbody>
+                    {% for s in snapshot.dns_server_status %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td><code>{{ s.ip }}</code></td>
+                        <td>
+                            {% if s.status == 'UP' %}
+                                <span class="badge bg-success">UP</span>
+                            {% else %}
+                                <span class="badge bg-danger">DOWN</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ s.rtt_ms or '—' }} ms</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolver Info -->
+    <div class="col-md-6">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">🔧 System Resolver (/etc/resolv.conf)</div>
+            <div class="card-body">
+                {% if snapshot.resolver_info.nameservers %}
+                    <strong>Nameservers:</strong><br>
+                    {% for ns in snapshot.resolver_info.nameservers %}
+                        <span class="badge bg-info text-dark me-1 mb-1">{{ ns }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">No nameservers found</span>
+                {% endif %}
+                {% if snapshot.resolver_info.search_domains %}
+                    <br><strong class="mt-2 d-block">Search Domains:</strong>
+                    {% for sd in snapshot.resolver_info.search_domains %}
+                        <span class="badge bg-secondary me-1">{{ sd }}</span>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Network Interfaces -->
+    <div class="col-md-5">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">🖧 Network Interfaces</div>
+            <div class="card-body p-0">
+                <table class="table table-dark table-sm mb-0">
+                    <thead><tr><th>Interface</th><th>State</th><th>IP Addresses</th></tr></thead>
+                    <tbody>
+                    {% for iface in snapshot.interfaces %}
+                    <tr>
+                        <td><code>{{ iface.name }}</code></td>
+                        <td>
+                            {% if iface.state == 'UP' %}
+                                <span class="badge bg-success">UP</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ iface.state }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ iface.addresses | join(', ') or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-muted">No interfaces found</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Tools -->
+    <div class="col-md-3">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">🔧 Available Tools</div>
+            <div class="card-body">
+                {% for tool, available in tools.items() %}
+                <div class="d-flex justify-content-between mb-1">
+                    <code>{{ tool }}</code>
+                    {% if available %}
+                        <span class="badge bg-success">✓</span>
+                    {% else %}
+                        <span class="badge bg-secondary">✗</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Connections -->
+    <div class="col-md-4">
+        <div class="card bg-black text-light h-100">
+            <div class="card-header">🔌 Active Connections (DNS/Established)</div>
+            <div class="card-body p-0" style="max-height:250px; overflow-y:auto;">
+                {% set conns = snapshot.active_connections.connections %}
+                {% if conns %}
+                <table class="table table-dark table-sm mb-0">
+                    <thead><tr><th>State</th><th>Local</th><th>Peer</th></tr></thead>
+                    <tbody>
+                    {% for c in conns[:15] %}
+                    <tr>
+                        <td><small>{{ c.state }}</small></td>
+                        <td><small class="text-truncate d-block" style="max-width:100px">{{ c.local }}</small></td>
+                        <td><small class="text-truncate d-block" style="max-width:100px">{{ c.peer }}</small></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No relevant connections found</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live DNS Lookup Tool -->
+<div class="card bg-black text-light">
+    <div class="card-header">🔎 Live DNS Lookup Tool</div>
+    <div class="card-body">
+        <div class="row g-2 mb-3">
+            <div class="col-md-5">
+                <input type="text" id="lookupDomain" class="form-control bg-dark text-light border-secondary"
+                    placeholder="Enter domain (e.g. google.com)" />
+            </div>
+            <div class="col-md-2">
+                <select id="lookupType" class="form-select bg-dark text-light border-secondary">
+                    <option value="dig">dig</option>
+                    <option value="nslookup">nslookup</option>
+                    <option value="ping">ping</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button onclick="runLookup()" class="btn btn-primary w-100">Run</button>
+            </div>
+        </div>
+        <pre id="lookupResult" class="bg-dark border border-secondary rounded p-3 text-light"
+             style="min-height:80px;max-height:300px;overflow:auto;">Results will appear here...</pre>
+    </div>
+</div>
+
+<script>
+async function runLookup() {
+    const domain = document.getElementById('lookupDomain').value.trim();
+    const type = document.getElementById('lookupType').value;
+    const out = document.getElementById('lookupResult');
+    if (!domain) { out.textContent = 'Please enter a domain.'; return; }
+    out.textContent = 'Running...';
+    try {
+        const resp = await fetch(`/api/${type}/${domain}`);
+        const data = await resp.json();
+        out.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+        out.textContent = 'Error: ' + e.message;
+    }
+}
+</script>
+{% endblock %}
